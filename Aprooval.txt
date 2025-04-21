@@ -13,13 +13,7 @@
 
 2ac57d6
 
-New Entry:
-UID: 41353d60
-
-DOB: 2025-04-21 17:57
-End Time: 22 April, 2025 17:57:00
-Duration: 24 hour(s) 
-Section: BM
+41353d60
 
 502ad61f
 
