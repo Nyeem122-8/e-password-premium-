@@ -1,289 +1,284 @@
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prediction Viewer HD</title>
-  <style>
-    body {
-      background: #111;
-      color: #fff;
-      text-align: center;
-      font-family: Arial, sans-serif;
-      padding: 10px;
-      display: flex;
-      justify-content: start;
-      align-items: center;
-      flex-direction: column;
-      height: 100vh;
-      margin: 0;
-    }
-    .image-box {
-      margin-top: 0;
-      width: 250px;
-      height: 120px;
-      background-color: #333;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border: 2px solid #00ffcc;
-      border-radius: 8px;
-      margin-bottom: 10px;
-    }
-    .image-box img {
-      width: 210px;
-      height: 90px;
-      animation: pulse 1s ease infinite;
-    }
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.1); opacity: 0.8; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    input {
-      width: 45px;
-      font-size: 22px;
-      margin: 2px;
-      text-align: center;
-      padding: 8px;
-      background-color: #333;
-      border: 2px solid #00ffcc;
-      border-radius: 5px;
-      color: white;
-    }
-    .keyboard-row {
-      display: flex;
-      justify-content: center;
-      gap: 6px;
-      margin: 6px 0;
-    }
-    .keyboard-row button {
-      width: 55px;
-      height: 55px;
-      font-size: 20px;
-      border-radius: 10px;
-      background-color: #222;
-      border: 2px solid #00ffcc;
-      color: white;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 18px;
-      cursor: pointer;
-      background-color: #222;
-      border: 2px solid #00ffcc;
-      color: white;
-      border-radius: 8px;
-      margin: 4px;
-    }
-    .youtube-embed {
-      margin-top: 12px;
-      width: 210px;
-      height: 350px;
-      background-color: #222;
-      border: 2px solid #FF0000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-    }
-    .youtube-embed iframe {
-      width: 100%;
-      height: 100%;
-    }
-    .button-container {
-      display: flex;
-      justify-content: space-between;
-      width: 100%;
-      max-width: 300px;
-      margin-top: 12px;
-    }
-    .button-container button {
-      width: 120px;
-    }
-    #popupBox {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: #222;
-      color: white;
-      padding: 20px;
-      border-radius: 10px;
-      z-index: 100;
-      font-size: 24px;
-      font-weight: bold;
-      border: 4px solid #00ffcc;
-      box-shadow: 0 0 15px #00ffcc;
-    }
-    #searchText {
-      margin-top: 8px;
-      font-size: 22px;
-      font-weight: bold;
-      color: #00ffcc;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="image-box" id="imageBox"></div>
-  <div id="searchText"></div>
-
-  <div>
-    <input type="number" id="n6" min="0" max="9" oninput="checkPattern()">
-    <input type="number" id="n5" min="0" max="9" oninput="checkPattern()">
-    <input type="number" id="n4" min="0" max="9" oninput="checkPattern()">
-    <input type="number" id="n3" min="0" max="9" oninput="checkPattern()">
-    <input type="number" id="n2" min="0" max="9" oninput="checkPattern()">
-    <input type="number" id="n1" min="0" max="9" oninput="checkPattern()">
-  </div>
-
-  <div class="keyboard-row">
-    <button onclick="addNumber(1)">1</button>
-    <button onclick="addNumber(2)">2</button>
-    <button onclick="addNumber(3)">3</button>
-    <button onclick="addNumber(4)">4</button>
-    <button onclick="addNumber(5)">5</button>
-  </div>
-  <div class="keyboard-row">
-    <button onclick="addNumber(6)">6</button>
-    <button onclick="addNumber(7)">7</button>
-    <button onclick="addNumber(8)">8</button>
-    <button onclick="addNumber(9)">9</button>
-    <button onclick="addNumber(0)">0</button>
-  </div>
-
-  <button onclick="clearInputs()">Clear</button>
-
-  <div id="popupBox">
-    <p id="popupText"></p>
-  </div>
-
-  <div class="youtube-embed">
-    <iframe src="https://hgzy.in/#/register?invitationCode=74456750825" frameborder="0" allowfullscreen></iframe>
-  </div>
-
-
-
-  <script>
-    let datasetBS = [], datasetRG = [];
-    let selectedResult = null;
-
-    fetch('dataset.json').then(res => res.json()).then(data => datasetBS = data);
-    fetch('dataset1.json').then(res => res.json()).then(data => datasetRG = data);
-
-    function numToBS(num) {
-      return num >= 5 ? "B" : "S";
-    }
-
-    function numToRG(num) {
-      return [1,3,5,7,9].includes(num) ? "G" : "R";
-    }
-
-    function getCategoryType(num) {
-      if ([0, 2, 4].includes(num)) return "SR";
-      if ([1, 3].includes(num)) return "SG";
-      if ([6, 8].includes(num)) return "BR";
-      if ([5, 7, 9].includes(num)) return "BG";
-      return "";
-    }
-
-    function showSearchText(inputs) {
-      const first = inputs[0];
-      const category = getCategoryType(first);
-      const others = inputs.slice(1).join(",");
-      document.getElementById("searchText").innerText = ``;
-    }
-
-    function checkPattern() {
-      let inputs = [];
-      for (let i = 6; i >= 1; i--) {
-        let val = document.getElementById("n" + i).value;
-        if (val === "") return;
-        inputs.push(parseInt(val));
-      }
-
-      let bsPattern = inputs.map(numToBS).reverse();
-      let rgPattern = inputs.map(numToRG).reverse();
-
-      let matchBS = findMatch(datasetBS, bsPattern);
-      let matchRG = findMatch(datasetRG, rgPattern);
-
-      let imageBox = document.getElementById("imageBox");
-      imageBox.innerHTML = "";
-
-      if (matchBS && matchRG) {
-        let combo = matchBS + matchRG;
-        let imageName = combo + ".png";
-        let img = document.createElement("img");
-        img.src = imageName;
-        img.alt = combo;
-        imageBox.appendChild(img);
-        showPopup(combo);
-      } else {
-        imageBox.innerHTML = "<p style='color:#ff4444;'>মিল পাওয়া যায়নি।</p>";
-      }
-
-      showSearchText(inputs);
-
-      document.getElementById("winButton").disabled = false;
-      document.getElementById("lossButton").disabled = false;
-    }
-
-    function findMatch(dataset, pattern) {
-      for (let i = dataset.length - 6; i >= 1; i--) {
-        let slice = dataset.slice(i - 6, i);
-        if (JSON.stringify(slice) === JSON.stringify(pattern)) {
-          return dataset[i];
-        }
-      }
-      return null;
-    }
-
-    function addNumber(num) {
-      for (let i = 6; i >= 1; i--) {
-        let input = document.getElementById("n" + i);
-        if (input.value === "") {
-          input.value = num;
-          break;
-        }
-      }
-      checkPattern();
-    }
-
-    function clearInputs() {
-      for (let i = 6; i >= 1; i--) {
-        document.getElementById("n" + i).value = "";
-      }
-      document.getElementById("imageBox").innerHTML = "";
-      document.getElementById("searchText").innerText = "";
-    }
-
-    function playClickSound() {
-      let audio = new Audio('click-sound.mp3');
-      audio.play();
-    }
-
-    function showPopup(text) {
-      let popupBox = document.getElementById('popupBox');
-      let popupText = document.getElementById('popupText');
-      popupText.innerHTML = text;
-      popupBox.style.display = 'block';
-      setTimeout(() => popupBox.style.display = 'none', 2000);
-    }
-
-    document.getElementById('winButton').addEventListener('click', () => {
-      selectedResult = "follow hack file\tprhacktion";
-      playClickSound();
-      document.getElementById('winButton').disabled = true;
-    });
-
-    document.getElementById('lossButton').addEventListener('click', () => {
-      selectedResult = "Use Opostive";
-      playClickSound();
-      document.getElementById('lossButton').disabled = true;
-    });
-  </script>
-</body>
-</html>
+<!DOCTYPE html>  <html lang="en">  
+<head>  
+  <meta charset="UTF-8" />  
+  <title>Dark Hack 2.2</title>  
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.3/dist/tailwind.min.css" rel="stylesheet" />  
+  <style>  
+    html, body {  
+      margin: 0;  
+      padding: 0;  
+      width: 100%;  
+      height: 100%;  
+    }  
+    body {  
+      background-color: #0d1117;  
+      font-family: 'Courier New', monospace;  
+      color: #fff;  
+      display: flex;  
+      flex-direction: column;  
+      align-items: center;  
+      justify-content: flex-start;  
+      padding: 2rem 1rem;  
+      box-sizing: border-box;  
+    }  
+    header h1 {  
+      font-size: 2.5rem;  
+      color: #3b82f6;  
+      font-weight: 900;  
+      margin-bottom: 1rem;  
+    }  
+    #infoBox {  
+      background: #1e3a8a;  
+      border: 2px solid #3b82f6;  
+      border-radius: 12px;  
+      padding: 1.5rem 2rem;  
+      width: 350px;  
+      box-shadow: 0 0 15px #3b82f6;  
+      margin-bottom: 1.5rem;  
+      font-weight: 700;  
+      font-size: 1.2rem;  
+      line-height: 1.8;  
+    }  
+    #infoBox span.label {  
+      color: #ef4444;  
+    }  
+    #numbersBox span.number {  
+      background: #2563eb;  
+      padding: 4px 10px;  
+      margin-right: 8px;  
+      border-radius: 8px;  
+      font-weight: 900;  
+      font-size: 1.3rem;  
+      display: inline-block;  
+      min-width: 32px;  
+      text-align: center;  
+    }  
+    #colorText.red {  
+      background-color: #dc2626;  
+      color: white;  
+    }  
+    #colorText.green {  
+      background-color: #22c55e;  
+      color: #0f172a;  
+    }  
+    #buttons {  
+      margin-bottom: 2rem;  
+    }  
+    button {  
+      background-color: #3b82f6;  
+      border: skip..;  
+      border-radius: 12px;  
+      padding: 0.8rem 2rem;  
+      color: white;  
+      font-weight: 900;  
+      font-family: 'Courier New', monospace;  
+      font-size: 1.2rem;  
+      cursor: pointer;  
+      transition: background-color 0.3s ease, transform 0.3s ease;  
+      box-shadow: 0 0 10px #3b82f6;  
+    }  
+    button:hover {  
+      background-color: #ef4444;  
+      box-shadow: 0 0 15px #ef4444;  
+      transform: scale(1.05);  
+    }  
+    #gameDataContainer {  
+      max-width: 400px;  
+      width: 100%;  
+      font-family: Arial, sans-serif;  
+      margin-top: 1rem;  
+    }  
+    #gameDataContainer table {  
+      width: 100%;  
+      border-collapse: collapse;  
+      background-color: #22272e;  
+      color: white;  
+    }  
+    #gameDataContainer th, #gameDataContainer td {  
+      padding: 8px 12px;  
+      border: 1px solid #374151;  
+      text-align: center;  
+    }  
+    #gameDataContainer th {  
+      background-color: #2563eb;  
+      color: black;  
+    }  
+    #gameDataContainer tr:nth-child(even) {  
+      background-color: #1f2937;  
+    }  
+    #gameDataContainer tr:hover {  
+      background-color: #374151;  
+    }  
+  </style>  
+</head>  
+<body>  
+  <header>  
+    <h1>Dark Hack</h1>  
+  </header>    <div id="infoBox">  
+    Big/Small: <span id="bigSmall" class="label">--</span> <span id="bsPercent">(0%)</span><br />  
+    Red/Green: <span id="redGreen" class="label">--</span><br />  
+    Number: <span id="numbersBox"></span><br />  
+  </div>    <div id="buttons">  
+    <button id="fetchBtn">GO</button>  
+  </div>    <div id="gameDataContainer"></div>    <script>  
+    const bigSmallEl = document.getElementById('bigSmall');  
+    const redGreenEl = document.getElementById('redGreen');  
+    const numbersBox = document.getElementById('numbersBox');  
+    const bsPercent = document.getElementById('bsPercent');  
+    const fetchBtn = document.getElementById('fetchBtn');  
+    const gameDataContainer = document.getElementById('gameDataContainer');  
+  
+    function analyze(dataList) {  
+      const numbers = dataList.map(d => Number(d.number));  
+      const freq = {};  
+      numbers.forEach(n => freq[n] = (freq[n] || 0) + 1);  
+  
+      const sortedFreq = Object.entries(freq).sort((a,b) => b[1] - a[1]);  
+      const top3Numbers = sortedFreq.slice(0,3).map(e => e[0]);  
+  
+      let bigCount = 0, smallCount = 0;  
+      numbers.forEach(n => {  
+        if(n <= 4) smallCount++;  
+        else bigCount++;  
+      });  
+  
+      let bigSmallPattern = 'SKIP..';  
+      if(bigCount > smallCount) bigSmallPattern = 'BIG';  
+      else if(smallCount > bigCount) bigSmallPattern = 'SMALL';  
+  
+      const colorCount = { red: 0, green: 0 };  
+      dataList.forEach(item => {  
+        const colors = item.colour.toLowerCase().split(',');  
+        colors.forEach(c => {  
+          if(c === 'red' || c === 'green') {  
+            colorCount[c]++;  
+          }  
+        });  
+      });  
+  
+      let topColor = 'skip..';  
+      if(colorCount.red > colorCount.green) topColor = 'red';  
+      else if(colorCount.green > colorCount.red) topColor = 'green';  
+  
+      let confidenceBS = 70;  
+      const diff = Math.abs(bigCount - smallCount);  
+      if(diff >= 3) confidenceBS = 90;  
+      else if(diff === 2) confidenceBS = 82;  
+      else if(diff === 1) confidenceBS = 75;  
+  
+      if(sortedFreq[0][1] >= 3) confidenceBS += 5;  
+      if(confidenceBS > 95) confidenceBS = 95;  
+  
+      let confidenceColor = 70;  
+      const colorDiff = Math.abs(colorCount.red - colorCount.green);  
+      if(colorDiff >= 6) confidenceColor = 95;  
+      else if(colorDiff >= 4) confidenceColor = 88;  
+      else if(colorDiff >= 2) confidenceColor = 80;  
+      else if(colorDiff === 0) confidenceColor = 50;  
+  
+      return {  
+        bigSmallPattern,  
+        topColor,  
+        top3Numbers,  
+        confidenceBS,  
+        confidenceColor  
+      };  
+    }  
+  
+    function renderInfo(analysis) {  
+      bigSmallEl.textContent = analysis.bigSmallPattern;  
+      bsPercent.textContent = `(${analysis.confidenceBS}%)`;  
+      redGreenEl.textContent = analysis.topColor.toUpperCase() + ` (${analysis.confidenceColor}%)`;  
+  
+      redGreenEl.className = 'label';  
+      if(analysis.topColor === 'red') redGreenEl.classList.add('red');  
+      else if(analysis.topColor === 'green') redGreenEl.classList.add('green');  
+  
+      numbersBox.innerHTML = '';  
+      analysis.top3Numbers.forEach(num => {  
+        const span = document.createElement('span');  
+        span.textContent = num;  
+        span.className = 'number';  
+        numbersBox.appendChild(span);  
+      });  
+  
+      if (analysis.confidenceBS >= 100 || analysis.confidenceColor >= 100) {  
+        alert('SURE SHOT FOUND!');  
+      }  
+    }  
+  
+    function renderTable(list) {  
+      gameDataContainer.innerHTML = '';  
+      const table = document.createElement('table');  
+      table.innerHTML = `  
+        <thead>  
+          <tr>  
+            <th>Issue</th>  
+            <th>Number</th>  
+            <th>Colour</th>  
+          </tr>  
+        </thead>  
+        <tbody>  
+          ${list.map(item => `  
+            <tr>  
+              <td>${item.issueNumber}</td>  
+              <td>${item.number}</td>  
+              <td>${item.colour}</td>  
+            </tr>`).join('')}  
+        </tbody>`;  
+      gameDataContainer.appendChild(table);  
+    }  
+  
+    async function fetchAndAnalyzeRepeatedly(repeats = 7) {  
+      fetchBtn.disabled = true;  
+      fetchBtn.textContent = 'Loading...';  
+      let finalResult = null;  
+      let highestConfidence = 0;  
+      let bestList = [];  
+  
+      for (let i = 0; i < repeats; i++) {  
+        try {  
+          const res = await fetch('https://crbbb.com/api/webapi/GetNoaverageEmerdList', {  
+            method: 'POST',  
+            headers: { 'Content-Type': 'application/json;charset=UTF-8' },  
+            body: JSON.stringify({  
+              pageSize: 10,  
+              pageNo: 1,  
+              typeId: 30,  
+              language: 0,  
+              random: "62d02162c2234c64b57aa4188c5810b2",  
+              signature: "9BF7A245709AA054E231D75C404C6527",  
+              timestamp: Math.floor(Date.now() / 1000)  
+            })  
+          });  
+          const data = await res.json();  
+          const list = data?.data?.list;  
+          if (!list) continue;  
+  
+          const result = analyze(list);  
+          const totalConf = result.confidenceBS + result.confidenceColor;  
+          if (totalConf > highestConfidence) {  
+            highestConfidence = totalConf;  
+            finalResult = result;  
+            bestList = list;  
+          }  
+          if (result.confidenceBS >= 100 || result.confidenceColor >= 100) break;  
+        } catch (err) {  
+          console.error("Fetch error:", err);  
+        }  
+      }  
+  
+      if (finalResult) {  
+        renderInfo(finalResult);  
+        renderTable(bestList);  
+      } else {  
+        alert("No data found!");  
+      }  
+  
+      fetchBtn.disabled = false;  
+      fetchBtn.textContent = 'GO';  
+    }  
+  
+    fetchBtn.addEventListener('click', () => fetchAndAnalyzeRepeatedly());  
+  </script>  </body>  
+</html>  
