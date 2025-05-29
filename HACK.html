@@ -1,284 +1,589 @@
-<!DOCTYPE html>  <html lang="en">  
-<head>  
-  <meta charset="UTF-8" />  
-  <title>Dark Hack 2.2</title>  
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.3/dist/tailwind.min.css" rel="stylesheet" />  
-  <style>  
-    html, body {  
-      margin: 0;  
-      padding: 0;  
-      width: 100%;  
-      height: 100%;  
-    }  
-    body {  
-      background-color: #0d1117;  
-      font-family: 'Courier New', monospace;  
-      color: #fff;  
-      display: flex;  
-      flex-direction: column;  
-      align-items: center;  
-      justify-content: flex-start;  
-      padding: 2rem 1rem;  
-      box-sizing: border-box;  
-    }  
-    header h1 {  
-      font-size: 2.5rem;  
-      color: #3b82f6;  
-      font-weight: 900;  
-      margin-bottom: 1rem;  
-    }  
-    #infoBox {  
-      background: #1e3a8a;  
-      border: 2px solid #3b82f6;  
-      border-radius: 12px;  
-      padding: 1.5rem 2rem;  
-      width: 350px;  
-      box-shadow: 0 0 15px #3b82f6;  
-      margin-bottom: 1.5rem;  
-      font-weight: 700;  
-      font-size: 1.2rem;  
-      line-height: 1.8;  
-    }  
-    #infoBox span.label {  
-      color: #ef4444;  
-    }  
-    #numbersBox span.number {  
-      background: #2563eb;  
-      padding: 4px 10px;  
-      margin-right: 8px;  
-      border-radius: 8px;  
-      font-weight: 900;  
-      font-size: 1.3rem;  
-      display: inline-block;  
-      min-width: 32px;  
-      text-align: center;  
-    }  
-    #colorText.red {  
-      background-color: #dc2626;  
-      color: white;  
-    }  
-    #colorText.green {  
-      background-color: #22c55e;  
-      color: #0f172a;  
-    }  
-    #buttons {  
-      margin-bottom: 2rem;  
-    }  
-    button {  
-      background-color: #3b82f6;  
-      border: skip..;  
-      border-radius: 12px;  
-      padding: 0.8rem 2rem;  
-      color: white;  
-      font-weight: 900;  
-      font-family: 'Courier New', monospace;  
-      font-size: 1.2rem;  
-      cursor: pointer;  
-      transition: background-color 0.3s ease, transform 0.3s ease;  
-      box-shadow: 0 0 10px #3b82f6;  
-    }  
-    button:hover {  
-      background-color: #ef4444;  
-      box-shadow: 0 0 15px #ef4444;  
-      transform: scale(1.05);  
-    }  
-    #gameDataContainer {  
-      max-width: 400px;  
-      width: 100%;  
-      font-family: Arial, sans-serif;  
-      margin-top: 1rem;  
-    }  
-    #gameDataContainer table {  
-      width: 100%;  
-      border-collapse: collapse;  
-      background-color: #22272e;  
-      color: white;  
-    }  
-    #gameDataContainer th, #gameDataContainer td {  
-      padding: 8px 12px;  
-      border: 1px solid #374151;  
-      text-align: center;  
-    }  
-    #gameDataContainer th {  
-      background-color: #2563eb;  
-      color: black;  
-    }  
-    #gameDataContainer tr:nth-child(even) {  
-      background-color: #1f2937;  
-    }  
-    #gameDataContainer tr:hover {  
-      background-color: #374151;  
-    }  
-  </style>  
-</head>  
-<body>  
-  <header>  
-    <h1>Dark Hack</h1>  
-  </header>    <div id="infoBox">  
-    Big/Small: <span id="bigSmall" class="label">--</span> <span id="bsPercent">(0%)</span><br />  
-    Red/Green: <span id="redGreen" class="label">--</span><br />  
-    Number: <span id="numbersBox"></span><br />  
-  </div>    <div id="buttons">  
-    <button id="fetchBtn">GO</button>  
-  </div>    <div id="gameDataContainer"></div>    <script>  
-    const bigSmallEl = document.getElementById('bigSmall');  
-    const redGreenEl = document.getElementById('redGreen');  
-    const numbersBox = document.getElementById('numbersBox');  
-    const bsPercent = document.getElementById('bsPercent');  
-    const fetchBtn = document.getElementById('fetchBtn');  
-    const gameDataContainer = document.getElementById('gameDataContainer');  
-  
-    function analyze(dataList) {  
-      const numbers = dataList.map(d => Number(d.number));  
-      const freq = {};  
-      numbers.forEach(n => freq[n] = (freq[n] || 0) + 1);  
-  
-      const sortedFreq = Object.entries(freq).sort((a,b) => b[1] - a[1]);  
-      const top3Numbers = sortedFreq.slice(0,3).map(e => e[0]);  
-  
-      let bigCount = 0, smallCount = 0;  
-      numbers.forEach(n => {  
-        if(n <= 4) smallCount++;  
-        else bigCount++;  
-      });  
-  
-      let bigSmallPattern = 'SKIP..';  
-      if(bigCount > smallCount) bigSmallPattern = 'BIG';  
-      else if(smallCount > bigCount) bigSmallPattern = 'SMALL';  
-  
-      const colorCount = { red: 0, green: 0 };  
-      dataList.forEach(item => {  
-        const colors = item.colour.toLowerCase().split(',');  
-        colors.forEach(c => {  
-          if(c === 'red' || c === 'green') {  
-            colorCount[c]++;  
-          }  
-        });  
-      });  
-  
-      let topColor = 'skip..';  
-      if(colorCount.red > colorCount.green) topColor = 'red';  
-      else if(colorCount.green > colorCount.red) topColor = 'green';  
-  
-      let confidenceBS = 70;  
-      const diff = Math.abs(bigCount - smallCount);  
-      if(diff >= 3) confidenceBS = 90;  
-      else if(diff === 2) confidenceBS = 82;  
-      else if(diff === 1) confidenceBS = 75;  
-  
-      if(sortedFreq[0][1] >= 3) confidenceBS += 5;  
-      if(confidenceBS > 95) confidenceBS = 95;  
-  
-      let confidenceColor = 70;  
-      const colorDiff = Math.abs(colorCount.red - colorCount.green);  
-      if(colorDiff >= 6) confidenceColor = 95;  
-      else if(colorDiff >= 4) confidenceColor = 88;  
-      else if(colorDiff >= 2) confidenceColor = 80;  
-      else if(colorDiff === 0) confidenceColor = 50;  
-  
-      return {  
-        bigSmallPattern,  
-        topColor,  
-        top3Numbers,  
-        confidenceBS,  
-        confidenceColor  
-      };  
-    }  
-  
-    function renderInfo(analysis) {  
-      bigSmallEl.textContent = analysis.bigSmallPattern;  
-      bsPercent.textContent = `(${analysis.confidenceBS}%)`;  
-      redGreenEl.textContent = analysis.topColor.toUpperCase() + ` (${analysis.confidenceColor}%)`;  
-  
-      redGreenEl.className = 'label';  
-      if(analysis.topColor === 'red') redGreenEl.classList.add('red');  
-      else if(analysis.topColor === 'green') redGreenEl.classList.add('green');  
-  
-      numbersBox.innerHTML = '';  
-      analysis.top3Numbers.forEach(num => {  
-        const span = document.createElement('span');  
-        span.textContent = num;  
-        span.className = 'number';  
-        numbersBox.appendChild(span);  
-      });  
-  
-      if (analysis.confidenceBS >= 100 || analysis.confidenceColor >= 100) {  
-        alert('SURE SHOT FOUND!');  
-      }  
-    }  
-  
-    function renderTable(list) {  
-      gameDataContainer.innerHTML = '';  
-      const table = document.createElement('table');  
-      table.innerHTML = `  
-        <thead>  
-          <tr>  
-            <th>Issue</th>  
-            <th>Number</th>  
-            <th>Colour</th>  
-          </tr>  
-        </thead>  
-        <tbody>  
-          ${list.map(item => `  
-            <tr>  
-              <td>${item.issueNumber}</td>  
-              <td>${item.number}</td>  
-              <td>${item.colour}</td>  
-            </tr>`).join('')}  
-        </tbody>`;  
-      gameDataContainer.appendChild(table);  
-    }  
-  
-    async function fetchAndAnalyzeRepeatedly(repeats = 7) {  
-      fetchBtn.disabled = true;  
-      fetchBtn.textContent = 'Loading...';  
-      let finalResult = null;  
-      let highestConfidence = 0;  
-      let bestList = [];  
-  
-      for (let i = 0; i < repeats; i++) {  
-        try {  
-          const res = await fetch('https://crbbb.com/api/webapi/GetNoaverageEmerdList', {  
-            method: 'POST',  
-            headers: { 'Content-Type': 'application/json;charset=UTF-8' },  
-            body: JSON.stringify({  
-              pageSize: 10,  
-              pageNo: 1,  
-              typeId: 30,  
-              language: 0,  
-              random: "62d02162c2234c64b57aa4188c5810b2",  
-              signature: "9BF7A245709AA054E231D75C404C6527",  
-              timestamp: Math.floor(Date.now() / 1000)  
-            })  
-          });  
-          const data = await res.json();  
-          const list = data?.data?.list;  
-          if (!list) continue;  
-  
-          const result = analyze(list);  
-          const totalConf = result.confidenceBS + result.confidenceColor;  
-          if (totalConf > highestConfidence) {  
-            highestConfidence = totalConf;  
-            finalResult = result;  
-            bestList = list;  
-          }  
-          if (result.confidenceBS >= 100 || result.confidenceColor >= 100) break;  
-        } catch (err) {  
-          console.error("Fetch error:", err);  
-        }  
-      }  
-  
-      if (finalResult) {  
-        renderInfo(finalResult);  
-        renderTable(bestList);  
-      } else {  
-        alert("No data found!");  
-      }  
-  
-      fetchBtn.disabled = false;  
-      fetchBtn.textContent = 'GO';  
-    }  
-  
-    fetchBtn.addEventListener('click', () => fetchAndAnalyzeRepeatedly());  
-  </script>  </body>  
-</html>  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>dark hack 3.5</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.3/dist/tailwind.min.css" rel="stylesheet"/>
+  <style>
+    body {
+      background-color: #0d1117;
+      font-family: 'Courier New', monospace;
+      color: #fff;
+      padding: 2rem;
+    }
+    .windows-box {
+      background-color: #1e293b;
+      padding: 1rem;
+      margin-top: 2rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 0 10px #3b82f6;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .windows-entry {
+      padding: 0.5rem;
+      border-bottom: 1px solid #334155;
+      font-size: 0.95rem;
+    }
+    .win { color: #22c55e; font-weight: bold; }
+    .loss { color: #ef4444; font-weight: bold; }
+    .highlight { font-weight: bold; }
+    .pattern-indicator {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.8rem;
+      margin-left: 0.5rem;
+    }
+    .pattern-start {
+      background-color: #3b82f6;
+    }
+    .pattern-break {
+      background-color: #ef4444;
+    }
+    .trend-bull {
+      background-color: #22c55e;
+    }
+    .trend-bear {
+      background-color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <header class="text-center mb-6">
+    <h1 class="text-4xl font-extrabold text-blue-500">dark hack</h1>
+    <p class="text-yellow-400 mt-2">6 + new unique pattern</p>
+  </header>
+
+  <div class="text-center text-2xl font-bold text-yellow-400 mb-4">
+    <div id="timer">00:30</div>
+  </div>
+
+  <div id="infoBox" class="bg-blue-900 border-2 border-blue-500 rounded-xl p-6 w-full max-w-md mx-auto shadow-lg font-bold text-lg leading-8 mb-4">
+    PREDICTION: <span id="prediction" class="text-red-500">--</span> <span id="predPercent">(0%)</span><br />
+    CURRENT PATTERN: <span id="currentPattern">--</span><br />
+    PATTERN START: <span id="patternStart">--</span><br />
+    BREAK CHANCE: <span id="breakChance">0%</span><br />
+    MARKET TREND: <span id="marketTrend">--</span>
+  </div>
+
+  <div id="gameDataContainer" class="max-w-md mx-auto mb-6"></div>
+  <div id="windowsBox" class="windows-box max-w-md mx-auto"></div>
+
+  <script>
+    const predictionEl = document.getElementById('prediction');
+    const predPercent = document.getElementById('predPercent');
+    const gameDataContainer = document.getElementById('gameDataContainer');
+    const windowsBox = document.getElementById('windowsBox');
+    const currentPatternEl = document.getElementById('currentPattern');
+    const patternStartEl = document.getElementById('patternStart');
+    const breakChanceEl = document.getElementById('breakChance');
+    const marketTrendEl = document.getElementById('marketTrend');
+
+    let lastIssueNumber = null;
+    let lastShownIssue = null;
+    let previousPrediction = null;
+    let nextPrediction = null;
+    let activePattern = null;
+    let patternStartNumber = null;
+    let currentTrend = null;
+
+    // Enhanced Pattern Detectors with Trend Analysis
+    const patternDetectors = {
+      // 1. Repeat Pattern with trend detection
+      detectRepeat: (numbers) => {
+        if (numbers.length < 3) return null;
+        const last = numbers[numbers.length - 1];
+        const secondLast = numbers[numbers.length - 2];
+        const thirdLast = numbers[numbers.length - 3];
+        
+        // Detect trend direction and strength
+        const isBullish = last > secondLast && secondLast > thirdLast;
+        const isBearish = last < secondLast && secondLast < thirdLast;
+        const trendStrength = Math.abs((last - thirdLast) / 2);
+        
+        if (last <= 4 && secondLast <= 4) {
+          return { 
+            prediction: isBullish && trendStrength > 1 ? 'BIG' : 'SMALL',
+            breakChance: last === 0 ? (isBullish ? 60 : 80) : (isBullish ? 20 : 30),
+            trend: isBullish ? 'BULL' : isBearish ? 'BEAR' : 'NEUTRAL'
+          };
+        }
+        if (last > 4 && secondLast > 4) {
+          return { 
+            prediction: isBearish && trendStrength > 1 ? 'SMALL' : 'BIG',
+            breakChance: last === 9 ? (isBearish ? 60 : 80) : (isBearish ? 20 : 30),
+            trend: isBearish ? 'BEAR' : isBullish ? 'BULL' : 'NEUTRAL'
+          };
+        }
+        return null;
+      },
+      
+      // 2. 2-1 Pattern with trend consideration
+      detectTwoOne: (numbers) => {
+        if (numbers.length < 4) return null;
+        const lastFour = numbers.slice(-4);
+        const trend = lastFour[3] - lastFour[0];
+        const trendDirection = trend > 1 ? 'BULL' : trend < -1 ? 'BEAR' : 'NEUTRAL';
+        
+        const bigCount = lastFour.filter(n => n > 4).length;
+        const smallCount = lastFour.filter(n => n <= 4).length;
+        
+        if (bigCount === 3 && smallCount === 1) {
+          return { 
+            prediction: trendDirection === 'BULL' ? 'BIG' : 'SMALL',
+            breakChance: 35,
+            trend: trendDirection
+          };
+        }
+        if (bigCount === 1 && smallCount === 3) {
+          return { 
+            prediction: trendDirection === 'BEAR' ? 'SMALL' : 'BIG',
+            breakChance: 35,
+            trend: trendDirection
+          };
+        }
+        return null;
+      },
+
+      // 3. Alternate Pattern with trend adjustment
+      detectAlternate: (numbers) => {
+        if (numbers.length < 4) return null;
+        let isAlternating = true;
+        const trends = [];
+        
+        for (let i = numbers.length - 1; i > numbers.length - 4; i--) {
+          const current = numbers[i] <= 4 ? 'S' : 'B';
+          const prev = numbers[i-1] <= 4 ? 'S' : 'B';
+          trends.push(numbers[i] - numbers[i-1]);
+          if (current === prev) {
+            isAlternating = false;
+            break;
+          }
+        }
+        
+        if (isAlternating) {
+          const avgTrend = trends.reduce((a,b) => a + b, 0) / trends.length;
+          const last = numbers[numbers.length - 1];
+          const trendDirection = avgTrend > 0.5 ? 'BULL' : avgTrend < -0.5 ? 'BEAR' : 'NEUTRAL';
+          
+          // Adjust prediction based on overall trend
+          if (trendDirection === 'BULL') {
+            return {
+              prediction: 'BIG',
+              breakChance: (last === 0 || last === 9) ? 65 : 25,
+              trend: 'BULL'
+            };
+          } else if (trendDirection === 'BEAR') {
+            return {
+              prediction: 'SMALL',
+              breakChance: (last === 0 || last === 9) ? 65 : 25,
+              trend: 'BEAR'
+            };
+          } else {
+            return {
+              prediction: last <= 4 ? 'BIG' : 'SMALL',
+              breakChance: (last === 0 || last === 9) ? 65 : 35,
+              trend: 'NEUTRAL'
+            };
+          }
+        }
+        return null;
+      },
+      
+      // 4. Mirror Pattern with trend detection
+      detectMirror: (numbers) => {
+        if (numbers.length < 6) return null;
+        const half = Math.floor(numbers.length / 2);
+        const firstHalf = numbers.slice(0, half);
+        const secondHalf = numbers.slice(half);
+        
+        // Check mirror pattern with tolerance
+        let mirrorMatch = true;
+        for (let i = 0; i < half; i++) {
+          if (Math.abs(firstHalf[i] - secondHalf[half-1-i]) > 2) {
+            mirrorMatch = false;
+            break;
+          }
+        }
+        
+        if (mirrorMatch) {
+          // Analyze trend in second half
+          const trend = secondHalf[half-1] - secondHalf[0];
+          const last = numbers[numbers.length - 1];
+          const trendDirection = trend > 1 ? 'BULL' : trend < -1 ? 'BEAR' : 'NEUTRAL';
+          
+          return { 
+            prediction: trendDirection === 'BULL' ? 'BIG' : trendDirection === 'BEAR' ? 'SMALL' : last <= 4 ? 'BIG' : 'SMALL',
+            breakChance: 30,
+            trend: trendDirection
+          };
+        }
+        return null;
+      },
+      
+      // 5. Cluster Pattern with trend analysis
+      detectCluster: (numbers) => {
+        if (numbers.length < 5) return null;
+        const lastFive = numbers.slice(-5);
+        const bigCount = lastFive.filter(n => n > 4).length;
+        const smallCount = lastFive.filter(n => n <= 4).length;
+        
+        // Calculate trend
+        const trend = lastFive[4] - lastFive[0];
+        const trendDirection = trend > 1 ? 'BULL' : trend < -1 ? 'BEAR' : 'NEUTRAL';
+        
+        if (bigCount >= 4) {
+          return { 
+            prediction: trendDirection === 'BEAR' ? 'SMALL' : 'BIG',
+            breakChance: trendDirection === 'BEAR' ? 60 : 40,
+            trend: trendDirection
+          };
+        }
+        if (smallCount >= 4) {
+          return { 
+            prediction: trendDirection === 'BULL' ? 'BIG' : 'SMALL',
+            breakChance: trendDirection === 'BULL' ? 60 : 40,
+            trend: trendDirection
+          };
+        }
+        return null;
+      },
+      
+      // 6. Zigzag Pattern with trend adjustment
+      detectZigzag: (numbers) => {
+        if (numbers.length < 5) return null;
+        const lastFive = numbers.slice(-5);
+        let isZigzag = true;
+        const trends = [];
+        
+        for (let i = 1; i < lastFive.length; i++) {
+          const diff = lastFive[i] - lastFive[i-1];
+          trends.push(diff);
+          if (i > 1 && Math.sign(diff) === Math.sign(trends[i-2])) {
+            isZigzag = false;
+            break;
+          }
+        }
+        
+        if (isZigzag) {
+          const avgTrend = trends.reduce((a,b) => a + b, 0) / trends.length;
+          const last = lastFive[lastFive.length - 1];
+          const trendDirection = avgTrend > 0.3 ? 'BULL' : avgTrend < -0.3 ? 'BEAR' : 'NEUTRAL';
+          
+          // Extreme numbers override trend
+          if (last === 0 || last === 9) {
+            return {
+              prediction: last <= 4 ? 'BIG' : 'SMALL',
+              breakChance: 75,
+              trend: trendDirection
+            };
+          }
+          
+          return {
+            prediction: trendDirection === 'BULL' ? 'BIG' : trendDirection === 'BEAR' ? 'SMALL' : last <= 4 ? 'BIG' : 'SMALL',
+            breakChance: 30,
+            trend: trendDirection
+          };
+        }
+        return null;
+      }
+    };
+
+    function detectActivePattern(numbers) {
+      // First check if current pattern is still active
+      if (activePattern) {
+        const lastNumber = numbers[numbers.length - 1];
+        const lastPrediction = activePattern.prediction;
+        const actual = lastNumber <= 4 ? 'SMALL' : 'BIG';
+        
+        // If pattern was correct, continue with it
+        if (lastPrediction === actual) {
+          // Update break chance based on pattern length and trend
+          const patternLength = numbers.length - patternStartNumber;
+          let breakChance = 20 + (patternLength * 5);
+          
+          // Adjust break chance based on trend strength
+          if (currentTrend === 'BULL' && activePattern.prediction === 'BIG') {
+            breakChance = Math.max(10, breakChance - 15);
+          } else if (currentTrend === 'BEAR' && activePattern.prediction === 'SMALL') {
+            breakChance = Math.max(10, breakChance - 15);
+          }
+          
+          activePattern.breakChance = Math.min(breakChance, 80);
+          return activePattern;
+        }
+        // If pattern was wrong, mark as broken
+        else {
+          activePattern = null;
+          patternStartNumber = null;
+          currentTrend = null;
+        }
+      }
+      
+      // Detect new pattern
+      for (const [name, detector] of Object.entries(patternDetectors)) {
+        const result = detector(numbers);
+        if (result) {
+          const patternName = name.replace('detect', '').replace(/([A-Z])/g, ' $1').trim();
+          currentTrend = result.trend;
+          return {
+            name: patternName,
+            prediction: result.prediction,
+            breakChance: result.breakChance,
+            startIndex: numbers.length - 1,
+            trend: result.trend
+          };
+        }
+      }
+      
+      // If no pattern found, analyze trend
+      if (numbers.length >= 5) {
+        const lastFive = numbers.slice(-5);
+        const trend = lastFive[4] - lastFive[0];
+        if (trend > 2) currentTrend = 'BULL';
+        else if (trend < -2) currentTrend = 'BEAR';
+        else currentTrend = 'NEUTRAL';
+      }
+      
+      return null;
+    }
+
+    function analyze(numbers) {
+      // Detect or continue current pattern
+      const currentPattern = detectActivePattern(numbers);
+      
+      // If we have an active pattern
+      if (currentPattern) {
+        activePattern = currentPattern;
+        if (!patternStartNumber) {
+          patternStartNumber = currentPattern.startIndex;
+        }
+        
+        // Check if we should break the pattern based on last number and trend
+        const lastNumber = numbers[numbers.length - 1];
+        let finalPrediction = currentPattern.prediction;
+        let confidence = 100 - currentPattern.breakChance;
+        
+        // Special cases for extreme numbers with trend consideration
+        if (lastNumber === 0) {
+          if (currentTrend === 'BULL' && currentPattern.prediction === 'SMALL') {
+            finalPrediction = 'BIG';
+            confidence = 70;
+          } else if (currentTrend === 'BEAR') {
+            finalPrediction = 'SMALL';
+            confidence = 60;
+          }
+        } else if (lastNumber === 9) {
+          if (currentTrend === 'BEAR' && currentPattern.prediction === 'BIG') {
+            finalPrediction = 'SMALL';
+            confidence = 70;
+          } else if (currentTrend === 'BULL') {
+            finalPrediction = 'BIG';
+            confidence = 60;
+          }
+        }
+        
+        return {
+          prediction: finalPrediction,
+          confidence: confidence,
+          currentPattern: currentPattern,
+          patternStart: numbers[patternStartNumber],
+          breakChance: currentPattern.breakChance,
+          trend: currentPattern.trend || currentTrend
+        };
+      }
+      
+      // If no clear pattern, use trend-based analysis
+      let big = 0, small = 0;
+      numbers.forEach(n => {
+        n <= 4 ? small++ : big++;
+      });
+      
+      const diff = Math.abs(big - small);
+      let baseConfidence = 70 + Math.min(5 * diff, 25);
+      
+      // Adjust confidence based on trend
+      if (currentTrend === 'BULL') {
+        baseConfidence = big > small ? baseConfidence + 10 : baseConfidence - 10;
+      } else if (currentTrend === 'BEAR') {
+        baseConfidence = small > big ? baseConfidence + 10 : baseConfidence - 10;
+      }
+      
+      const confidence = Math.min(Math.max(baseConfidence, 50), 95);
+      const prediction = currentTrend === 'BULL' ? 'BIG' : 
+                        currentTrend === 'BEAR' ? 'SMALL' :
+                        big > small ? 'BIG' : small > big ? 'SMALL' : 'SKIP';
+      
+      return { 
+        prediction: prediction,
+        confidence: confidence,
+        currentPattern: null,
+        patternStart: null,
+        breakChance: 50,
+        trend: currentTrend
+      };
+    }
+
+    function renderInfo(result) {
+      const predText = result.prediction === 'SKIP' ? '🚫' : result.prediction;
+      predictionEl.textContent = predText;
+      predPercent.textContent = `(${result.confidence}%)`;
+      predictionEl.className = result.prediction === 'BIG' ? 'text-red-500' : 'text-green-400';
+      
+      if (result.currentPattern) {
+        currentPatternEl.textContent = result.currentPattern.name;
+        patternStartEl.textContent = result.patternStart;
+      } else {
+        currentPatternEl.textContent = 'No clear pattern';
+        patternStartEl.textContent = '--';
+      }
+      
+      breakChanceEl.textContent = `${result.breakChance}%`;
+      
+      // Display market trend
+      if (result.trend) {
+        marketTrendEl.textContent = result.trend;
+        marketTrendEl.className = result.trend === 'BULL' ? 'trend-bull' : 
+                                 result.trend === 'BEAR' ? 'trend-bear' : '';
+      } else {
+        marketTrendEl.textContent = '--';
+        marketTrendEl.className = '';
+      }
+    }
+
+    function renderTable(data) {
+      gameDataContainer.innerHTML = '';
+      const table = document.createElement('table');
+      table.className = 'w-full text-sm text-center bg-gray-800';
+      table.innerHTML = `
+        <thead class="bg-blue-600 text-black">
+          <tr>
+            <th>Issue</th>
+            <th>Number</th>
+            <th>B/S</th>
+            <th>Pattern</th>
+            <th>Trend</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((item, index) => {
+            const number = Number(item.number);
+            const bs = number <= 4 ? 'S' : 'B';
+            let patternMark = '';
+            let trendMark = '';
+            
+            if (activePattern && index === data.length - 1 - (activePattern.startIndex || 0)) {
+              patternMark = '<span class="pattern-start">START</span>';
+            } else if (activePattern && index === data.length - 1) {
+              patternMark = `<span class="pattern-indicator">${activePattern.name}</span>`;
+            }
+            
+            // Add trend indicator for last few numbers
+            if (index >= data.length - 3) {
+              const diff = number - Number(data[Math.max(0, index-1)].number);
+              if (diff > 0) trendMark = '<span class="trend-bull">↑</span>';
+              else if (diff < 0) trendMark = '<span class="trend-bear">↓</span>';
+            }
+            
+            return `
+              <tr class="hover:bg-gray-600">
+                <td>${item.issueNumber.slice(-4)}</td>
+                <td>${number}</td>
+                <td>${bs}</td>
+                <td>${patternMark}</td>
+                <td>${trendMark}</td>
+              </tr>`;
+          }).join('')}
+        </tbody>`;
+      gameDataContainer.appendChild(table);
+    }
+
+    function appendToWindows(issue, number, prediction) {
+      if (issue === lastShownIssue) return;
+      lastShownIssue = issue;
+
+      const actual = number <= 4 ? 'SMALL' : 'BIG';
+      const isCorrect = actual === prediction.prediction;
+      
+      const predText = prediction.prediction === 'SKIP' ? '🚫' : 
+        `${prediction.prediction} <span class="${isCorrect ? 'win' : 'loss'}">${isCorrect ? '✔' : '✖'}</span>`;
+      
+      const patternInfo = prediction.currentPattern ? 
+        `<span class="pattern-indicator">${prediction.currentPattern.name}</span>` : '';
+      
+      const breakInfo = prediction.breakChance > 60 ? 
+        `<span class="pattern-break">BREAK ${prediction.breakChance}%</span>` : '';
+      
+      const trendInfo = prediction.trend ? 
+        `<span class="${prediction.trend === 'BULL' ? 'trend-bull' : 'trend-bear'}">${prediction.trend}</span>` : '';
+
+      const div = document.createElement('div');
+      const shortIssue = issue.toString().slice(-4);
+      div.className = 'windows-entry';
+      div.innerHTML = `${shortIssue} | ${number} | ${predText} ${patternInfo} ${breakInfo} ${trendInfo}`;
+      windowsBox.prepend(div);
+    }
+
+    async function fetchAndUpdate() {
+      try {
+        const res = await fetch('https://crbbb.com/api/webapi/GetNoaverageEmerdList', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+          body: JSON.stringify({
+            pageSize: 10,
+            pageNo: 1,
+            typeId: 30,
+            language: 0,
+            random: "62d02162c2234c64b57aa4188c5810b2",
+            signature: "9BF7A245709AA054E231D75C404C6527",
+            timestamp: Math.floor(Date.now() / 1000)
+          })
+        });
+
+        const json = await res.json();
+        const list = json?.data?.list;
+        if (!list?.length) return;
+
+        const latest = list[0];
+        const currentIssue = latest.issueNumber;
+        const number = Number(latest.number);
+        const numbers = list.map(item => Number(item.number));
+
+        if (currentIssue !== lastIssueNumber) {
+          if (previousPrediction) {
+            appendToWindows(currentIssue, number, previousPrediction);
+          }
+          lastIssueNumber = currentIssue;
+          previousPrediction = nextPrediction || analyze(numbers);
+          nextPrediction = analyze(numbers);
+          renderInfo(nextPrediction);
+        }
+
+        renderTable(list);
+
+      } catch (error) {
+        console.error("Fetch error:", error);
+      }
+    }
+
+    function updateTimer() {
+      const now = new Date();
+      const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 5, 30, 0);
+      if (now < base) base.setDate(base.getDate() - 1);
+      const elapsed = Math.floor((now - base) / 1000);
+      const remain = 30 - (elapsed % 30);
+
+      document.getElementById("timer").innerText = `00:${String(remain).padStart(2, '0')}`;
+      if (remain === 30) fetchAndUpdate();
+      setTimeout(updateTimer, 1000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateTimer();
+      fetchAndUpdate();
+    });
+  </script>
+</body>
+</html>
